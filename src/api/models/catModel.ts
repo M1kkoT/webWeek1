@@ -25,6 +25,28 @@ const getAllCats = async (): Promise<Cat[]> => {
 };
 
 // TODO: create getCat function to get single cat
+const getCat = async (cat_id: string) => {
+  const [rows] = await promisePool.execute<GetCat[]>(
+    `
+    SELECT cat_id, cat_name, weight, filename, birthdate, ST_X(coords) as lat, ST_Y(coords) as lng,
+    JSON_OBJECT('user_id', sssf_user.user_id, 'user_name', sssf_user.user_name) AS owner 
+	  FROM sssf_cat 
+	  JOIN sssf_user 
+    ON sssf_cat.owner = sssf_user.user_id
+    Where cat_id = ?
+    `,
+    [parseInt(cat_id)]
+  );
+  if (rows.length === 0) {
+    throw new CustomError('No cats found', 404);
+  }
+  const cat: Cat[] = rows.map((row) => ({
+    ...row,
+    owner: JSON.parse(row.owner?.toString() || '{}'),
+  }));
+
+  return cat[0] as Cat;
+};
 
 const addCat = async (data: PostCat): Promise<number> => {
   const [headers] = await promisePool.execute<ResultSetHeader>(
@@ -45,13 +67,48 @@ const addCat = async (data: PostCat): Promise<number> => {
   if (headers.affectedRows === 0) {
     throw new CustomError('No cats added', 400);
   }
-  console.log(headers.info);
   return headers.insertId;
 };
 
 // TODO: create updateCat function to update single cat
 // if role is admin, update any cat
 // if role is user, update only cats owned by user
+
+const updateCat = async (
+  data: PutCat,
+  id: number,
+  user_id: number,
+  role: 'admin' | 'user'
+): Promise<boolean> => {
+  if (role === 'admin') {
+    const sql = promisePool.format(
+      `
+    UPDATE sssf_cat SET ?
+    WHERE cat_id = ?
+    `,
+      [data, id]
+    );
+    const [headers] = await promisePool.execute<ResultSetHeader>(sql);
+    if (headers.affectedRows === 0) {
+      throw new CustomError('No cats modified', 400);
+    }
+    return true;
+  } else {
+    const sql = promisePool.format(
+      `
+    UPDATE sssf_cat SET ?
+    WHERE cat_id = ?
+    AND owner  = ?
+    `,
+      [data, id, user_id]
+    );
+    const [headers] = await promisePool.execute<ResultSetHeader>(sql);
+    if (headers.affectedRows === 0) {
+      throw new CustomError('No cats modified', 400);
+    }
+    return true;
+  }
+};
 
 const deleteCat = async (catId: number): Promise<boolean> => {
   const [headers] = await promisePool.execute<ResultSetHeader>(

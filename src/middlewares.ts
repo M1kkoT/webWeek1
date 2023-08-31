@@ -35,7 +35,6 @@ const errorHandler = (
 
 const getCoordinates = (req: Request, res: Response, next: NextFunction) => {
   try {
-    console.log(req.file?.path);
     // coordinates below should be an array of GPS coordinates in decimal format: [longitude, latitude]
     new ExifImage({image: req.file?.path}, (error, exifData) => {
       if (error) {
@@ -43,7 +42,7 @@ const getCoordinates = (req: Request, res: Response, next: NextFunction) => {
         res.locals.coords = [60, 24];
         next();
       } else {
-        // console.log('exif data', exifData);
+        //console.log('exif data', exifData);
         try {
           const lon = gpsToDecimal(
             exifData.gps.GPSLongitude || [0, 0, 0],
@@ -76,7 +75,6 @@ const makeThumbnail = async (
   next: NextFunction
 ) => {
   try {
-    console.log(req.file?.path);
     await sharp(req.file?.path)
       .resize(160, 160)
       .png()

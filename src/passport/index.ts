@@ -7,7 +7,6 @@ import {getUserLogin} from '../api/models/userModel';
 passport.use(
   new Strategy(async (username, password, done) => {
     try {
-      console.log(username, password);
       const user = await getUserLogin(username);
       if (!user) {
         return done(null, false);
@@ -23,6 +22,7 @@ passport.use(
 );
 
 // consider .env for secret, e.g. secretOrKey: process.env.JWT_SECRET
+
 passport.use(
   new JWTStrategy(
     {
